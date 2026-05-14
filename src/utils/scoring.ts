@@ -1,6 +1,10 @@
 /**
- * Exponential scoring curve: returns 100 at 50/50, 0 at 25/75 or worse.
- * Formula: max(0, 100 × (e^(-0.018×error) - e^(-0.45)) / (1 - e^(-0.45)))
+ * Power-law scoring curve: 100 at 50/50, ~70 at 40/60, 0 at 25/75 or worse.
+ * Formula: max(0, 100 × (1 − error/25)^0.7)
+ *
+ * The original spec's exponential formula is convex and cannot exceed the linear
+ * baseline (~60 at error=10) while zeroing at 25. This concave power law matches
+ * the spec's reference table exactly.
  */
 export function computeScore(leftCount: number, rightCount: number): number {
   const total = leftCount + rightCount
@@ -9,10 +13,6 @@ export function computeScore(leftCount: number, rightCount: number): number {
   const leftPercentage = (leftCount / total) * 100
   const error = Math.abs(50 - leftPercentage)
 
-  const k = 0.018
-  const cutoff = 0.45
-  const numerator = Math.exp(-k * error) - Math.exp(-cutoff)
-  const denominator = 1 - Math.exp(-cutoff)
-
-  return Math.max(0, 100 * (numerator / denominator))
+  if (error >= 25) return 0
+  return 100 * Math.pow(1 - error / 25, 0.7)
 }
