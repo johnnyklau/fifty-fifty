@@ -120,7 +120,7 @@ export function ProfilePage() {
       }
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-      newAvatarUrl = data.publicUrl
+      newAvatarUrl = `${data.publicUrl}?t=${Date.now()}`
     }
 
     const { error: updateErr } = await supabase
