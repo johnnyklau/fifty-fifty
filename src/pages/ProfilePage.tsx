@@ -33,7 +33,6 @@ function computeStats(games: GameRow[]): Stats {
   const variance = scores.reduce((acc, s) => acc + (s - mean) ** 2, 0) / gamesPlayed
   const consistency = Math.sqrt(variance)
 
-  // streak: consecutive calendar days with at least one game, counting back from today
   const playedDays = new Set(
     games.map(g => new Date(g.played_at).toISOString().slice(0, 10))
   )
@@ -54,15 +53,16 @@ function computeStats(games: GameRow[]): Stats {
 }
 
 export function ProfilePage() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, avatarUrl, setAvatarUrl } = useAuth()
   const avatarRef = useRef<AvatarCanvasHandle>(null)
 
   const [username, setUsername] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [drawingAvatar, setDrawingAvatar] = useState(false)
+  const [editUsername, setEditUsername] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saveMsg, setSaveMsg] = useState<string | null>(null)
-  const [showCanvas, setShowCanvas] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -74,7 +74,6 @@ export function ProfilePage() {
       .single()
       .then(({ data }) => {
         if (data?.username) setUsername(data.username)
-        if (data?.avatar_url) setAvatarUrl(data.avatar_url)
       })
 
     supabase
@@ -86,14 +85,27 @@ export function ProfilePage() {
       })
   }, [user])
 
-  async function handleSaveProfile() {
+  function handleEdit() {
+    setEditUsername(username)
+    setDrawingAvatar(false)
+    setError(null)
+    setEditing(true)
+  }
+
+  function handleCancel() {
+    setEditing(false)
+    setDrawingAvatar(false)
+    setError(null)
+  }
+
+  async function handleSave() {
     if (!user) return
     setSaving(true)
-    setSaveMsg(null)
+    setError(null)
 
     let newAvatarUrl = avatarUrl
 
-    if (showCanvas && avatarRef.current) {
+    if (drawingAvatar && avatarRef.current) {
       const dataUrl = avatarRef.current.toDataURL()
       const blob = await (await fetch(dataUrl)).blob()
       const path = `${user.id}/avatar.png`
@@ -101,83 +113,116 @@ export function ProfilePage() {
         .from('avatars')
         .upload(path, blob, { upsert: true, contentType: 'image/png' })
 
-      if (!uploadErr) {
-        const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-        newAvatarUrl = data.publicUrl
+      if (uploadErr) {
+        setSaving(false)
+        setError(`Avatar upload failed: ${uploadErr.message}`)
+        return
       }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      newAvatarUrl = data.publicUrl
     }
 
-    const { error } = await supabase
+    const { error: updateErr } = await supabase
       .from('profiles')
-      .update({ username: username || null, avatar_url: newAvatarUrl })
+      .update({ username: editUsername || null, avatar_url: newAvatarUrl })
       .eq('id', user.id)
 
     setSaving(false)
-    if (error) {
-      setSaveMsg(error.message)
-    } else {
-      setAvatarUrl(newAvatarUrl)
-      setShowCanvas(false)
-      setSaveMsg('Profile saved.')
+
+    if (updateErr) {
+      setError(updateErr.message)
+      return
     }
+
+    setUsername(editUsername)
+    setAvatarUrl(newAvatarUrl)
+    setEditing(false)
+    setDrawingAvatar(false)
   }
 
   if (!user) return null
 
+  const displayName = username || user.email
+
   return (
     <div className="profile-page">
       <div className="profile-card">
-        <div className="profile-avatar-section">
-          {avatarUrl && !showCanvas && (
-            <img src={avatarUrl} alt="Your avatar" className="profile-avatar-img" />
-          )}
-          {showCanvas ? (
-            <AvatarCanvas ref={avatarRef} />
-          ) : (
-            <button className="btn btn--secondary" onClick={() => setShowCanvas(true)}>
-              {avatarUrl ? 'Redraw avatar' : 'Draw your avatar'}
-            </button>
-          )}
-        </div>
 
-        <div className="profile-fields">
-          <label className="auth-label">
-            Display name
-            <input
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              className="auth-input"
-              placeholder="Choose a username"
-            />
-          </label>
+        {!editing ? (
+          <>
+            <div className="profile-display">
+              <div className="profile-avatar-large">
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="Your avatar" className="profile-avatar-img-large" />
+                  : <span className="profile-avatar-initials">{displayName?.[0].toUpperCase() ?? '?'}</span>
+                }
+              </div>
+              <p className="profile-display-name">{displayName}</p>
+              <div className="profile-display-actions">
+                <button className="btn btn--secondary" onClick={handleEdit}>Edit profile</button>
+                <button className="btn btn--secondary" onClick={signOut}>Sign out</button>
+              </div>
+            </div>
 
-          {saveMsg && <p className={saveMsg === 'Profile saved.' ? 'auth-success' : 'error-msg'}>{saveMsg}</p>}
+            {stats && (
+              <div className="profile-stats">
+                <h2 className="profile-stats-title">Stats</h2>
+                <table className="stats-table">
+                  <tbody>
+                    <tr><td>Games played</td><td>{stats.gamesPlayed}</td></tr>
+                    <tr><td>Average score</td><td>{stats.averageScore.toFixed(1)}</td></tr>
+                    <tr><td>Best score</td><td>{stats.bestScore}</td></tr>
+                    <tr><td>Perfect cuts</td><td>{stats.perfectCuts}</td></tr>
+                    <tr><td>Current streak</td><td>{stats.currentStreak} {stats.currentStreak === 1 ? 'day' : 'days'}</td></tr>
+                    <tr><td>Consistency</td><td>±{stats.consistency.toFixed(1)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="profile-editor">
+            <div className="profile-avatar-section">
+              {drawingAvatar ? (
+                <AvatarCanvas ref={avatarRef} />
+              ) : (
+                <div className="profile-avatar-preview">
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="Current avatar" className="profile-avatar-img-large" />
+                    : <span className="profile-avatar-initials">{displayName?.[0].toUpperCase() ?? '?'}</span>
+                  }
+                  <button className="btn btn--secondary" onClick={() => setDrawingAvatar(true)}>
+                    {avatarUrl ? 'Redraw avatar' : 'Draw your avatar'}
+                  </button>
+                </div>
+              )}
+            </div>
 
-          <button className="btn btn--primary" onClick={handleSaveProfile} disabled={saving}>
-            {saving ? 'Saving…' : 'Save profile'}
-          </button>
-        </div>
+            <label className="auth-label">
+              Display name
+              <input
+                type="text"
+                value={editUsername}
+                onChange={e => setEditUsername(e.target.value)}
+                className="auth-input"
+                placeholder="Choose a username"
+              />
+            </label>
 
-        {stats && (
-          <div className="profile-stats">
-            <h2 className="profile-stats-title">Stats</h2>
-            <table className="stats-table">
-              <tbody>
-                <tr><td>Games played</td><td>{stats.gamesPlayed}</td></tr>
-                <tr><td>Average score</td><td>{stats.averageScore.toFixed(1)}</td></tr>
-                <tr><td>Best score</td><td>{stats.bestScore}</td></tr>
-                <tr><td>Perfect cuts</td><td>{stats.perfectCuts}</td></tr>
-                <tr><td>Current streak</td><td>{stats.currentStreak} {stats.currentStreak === 1 ? 'day' : 'days'}</td></tr>
-                <tr><td>Consistency</td><td>±{stats.consistency.toFixed(1)}</td></tr>
-              </tbody>
-            </table>
+            {error && <p className="error-msg">{error}</p>}
+
+            <div className="profile-editor-actions">
+              <button className="btn btn--primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button className="btn btn--secondary" onClick={handleCancel} disabled={saving}>
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
-        <button className="btn btn--secondary" style={{ alignSelf: 'flex-start', marginTop: 8 }} onClick={signOut}>
-          Sign out
-        </button>
       </div>
     </div>
   )

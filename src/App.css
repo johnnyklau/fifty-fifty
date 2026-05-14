@@ -236,6 +236,42 @@
   padding: 6px 16px;
 }
 
+.header-avatar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  text-decoration: none;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.header-avatar-btn:hover {
+  border-color: var(--accent);
+}
+
+.header-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.header-avatar-placeholder {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-h);
+  background: var(--code-bg);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ── Auth page ── */
 
 .auth-page {
@@ -364,6 +400,60 @@
   gap: 28px;
 }
 
+.profile-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-avatar-large {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-avatar-img-large {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-initials {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-h);
+  background: var(--code-bg);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-display-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.profile-display-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .profile-avatar-section {
   display: flex;
   flex-direction: column;
@@ -371,18 +461,15 @@
   gap: 12px;
 }
 
-.profile-avatar-img {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--border);
+.profile-avatar-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.profile-fields {
+.profile-editor-actions {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .profile-stats-title {

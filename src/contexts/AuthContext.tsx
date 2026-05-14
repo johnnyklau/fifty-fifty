@@ -6,6 +6,8 @@ interface AuthContextValue {
   user: User | null
   session: Session | null
   loading: boolean
+  avatarUrl: string | null
+  setAvatarUrl: (url: string | null) => void
   signUp: (email: string, password: string) => Promise<{ error: string | null }>
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signInWithGoogle: () => Promise<{ error: string | null }>
@@ -18,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(supabaseConfigured)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!supabaseConfigured) return
@@ -35,6 +38,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchAvatar() {
+      if (!user || !supabaseConfigured) {
+        if (!cancelled) setAvatarUrl(null)
+        return
+      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single()
+      if (!cancelled) setAvatarUrl(data?.avatar_url ?? null)
+    }
+    fetchAvatar()
+    return () => { cancelled = true }
+  }, [user])
 
   async function signUp(email: string, password: string) {
     if (!supabaseConfigured) return { error: 'Auth not configured' }
@@ -63,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, avatarUrl, setAvatarUrl, signUp, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   )
