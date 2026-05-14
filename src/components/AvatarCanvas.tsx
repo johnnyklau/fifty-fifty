@@ -13,7 +13,7 @@ export interface AvatarCanvasHandle {
 }
 
 export function AvatarCanvas({ ref }: { ref?: React.Ref<AvatarCanvasHandle> }) {
-  const stageRef = useRef<Konva.Stage>(null)
+  const layerRef = useRef<Konva.Layer>(null)
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [color, setColor] = useState('#000000')
@@ -21,18 +21,16 @@ export function AvatarCanvas({ ref }: { ref?: React.Ref<AvatarCanvasHandle> }) {
   const isDrawing = useRef(false)
 
   useImperativeHandle(ref, () => ({
-    toDataURL: () => stageRef.current?.toDataURL() ?? '',
+    toDataURL: () => {
+      const canvas = layerRef.current?.toCanvas({ pixelRatio: 1 }) as HTMLCanvasElement | undefined
+      return canvas?.toDataURL('image/png') ?? ''
+    },
   }))
 
   function handleMouseDown(e: Konva.KonvaEventObject<MouseEvent>) {
     isDrawing.current = true
     const pos = e.target.getStage()!.getPointerPosition()!
-    setCurrentStroke({
-      tool: color === '#FFFFFF' ? 'eraser' : 'brush',
-      color,
-      size,
-      points: [[pos.x, pos.y]],
-    })
+    setCurrentStroke({ tool: 'brush', color, size, points: [[pos.x, pos.y]] })
   }
 
   function handleMouseMove(e: Konva.KonvaEventObject<MouseEvent>) {
@@ -52,7 +50,6 @@ export function AvatarCanvas({ ref }: { ref?: React.Ref<AvatarCanvasHandle> }) {
     <div className="avatar-canvas-container">
       <div className="canvas-wrapper" style={{ cursor: 'crosshair' }}>
         <Stage
-          ref={stageRef}
           width={CANVAS_SIZE}
           height={CANVAS_SIZE}
           onMouseDown={handleMouseDown}
@@ -60,7 +57,7 @@ export function AvatarCanvas({ ref }: { ref?: React.Ref<AvatarCanvasHandle> }) {
           onMouseUp={commitStroke}
           onMouseLeave={commitStroke}
         >
-          <Layer>
+          <Layer ref={layerRef}>
             <Rect x={0} y={0} width={CANVAS_SIZE} height={CANVAS_SIZE} fill="#FFFFFF" />
             {strokes.map((s, i) => (
               <Line
@@ -71,7 +68,6 @@ export function AvatarCanvas({ ref }: { ref?: React.Ref<AvatarCanvasHandle> }) {
                 lineCap="round"
                 lineJoin="round"
                 tension={0.4}
-                globalCompositeOperation={s.tool === 'eraser' ? 'destination-out' : 'source-over'}
               />
             ))}
             {currentStroke && (
@@ -82,7 +78,6 @@ export function AvatarCanvas({ ref }: { ref?: React.Ref<AvatarCanvasHandle> }) {
                 lineCap="round"
                 lineJoin="round"
                 tension={0.4}
-                globalCompositeOperation={currentStroke.tool === 'eraser' ? 'destination-out' : 'source-over'}
               />
             )}
           </Layer>
