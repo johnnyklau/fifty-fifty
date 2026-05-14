@@ -12,15 +12,22 @@ export function Header() {
     const today = new Date().toISOString().slice(0, 10)
 
     async function checkDaily() {
-      const { data: todayGames } = await supabase
-        .from('games')
-        .select('drawing_id')
-        .eq('user_id', user!.id)
-        .gte('played_at', `${today}T00:00:00Z`)
-        .not('drawing_id', 'is', null)
-        .limit(1)
+      const { data: prompt } = await supabase
+        .from('prompts')
+        .select('id')
+        .eq('active_date', today)
+        .maybeSingle()
 
-      setDailyDone(Boolean(todayGames && todayGames.length > 0))
+      if (!prompt) { setDailyDone(false); return }
+
+      const { data: myDrawing } = await supabase
+        .from('drawings')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('prompt_id', prompt.id)
+        .maybeSingle()
+
+      setDailyDone(Boolean(myDrawing))
     }
     checkDaily()
   }, [user])

@@ -111,29 +111,30 @@ export function DailyPage() {
       if (!promptData) { setPhase('no-prompt'); return }
       setPrompt(promptData as Prompt)
 
-      // Check if already completed today: find any game today that links to a drawing for this prompt
-      const { data: todayGames } = await supabase
-        .from('games')
-        .select('score, drawing_id')
+      // Lock out if the user has already submitted a drawing for today's prompt.
+      // The game links to the *cut* drawing (possibly from another prompt), so
+      // checking the user's own drawing submission is the reliable signal.
+      const { data: myDrawing } = await supabase
+        .from('drawings')
+        .select('id')
         .eq('user_id', user!.id)
-        .gte('played_at', `${today}T00:00:00Z`)
-        .not('drawing_id', 'is', null)
+        .eq('prompt_id', promptData.id)
+        .maybeSingle()
 
-      if (todayGames && todayGames.length > 0) {
-        const drawingIds = todayGames.map(g => g.drawing_id as string)
-        const { data: matchingDrawings } = await supabase
-          .from('drawings')
-          .select('id')
-          .eq('prompt_id', promptData.id)
-          .in('id', drawingIds)
+      if (myDrawing) {
+        const { data: todayGame } = await supabase
+          .from('games')
+          .select('score')
+          .eq('user_id', user!.id)
+          .gte('played_at', `${today}T00:00:00Z`)
+          .not('drawing_id', 'is', null)
+          .order('played_at', { ascending: false })
           .limit(1)
+          .maybeSingle()
 
-        if (matchingDrawings && matchingDrawings.length > 0) {
-          const matched = todayGames.find(g => matchingDrawings.some(d => d.id === g.drawing_id))
-          setTodayScore(matched?.score ?? null)
-          setPhase('already-done')
-          return
-        }
+        setTodayScore(todayGame?.score ?? null)
+        setPhase('already-done')
+        return
       }
 
       setPhase('drawing')
