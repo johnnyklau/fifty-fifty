@@ -107,11 +107,10 @@ export function ProfilePage() {
       }
     }
 
-    const { error } = await supabase.from('profiles').upsert({
-      id: user.id,
-      username: username || null,
-      avatar_url: newAvatarUrl,
-    })
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: username || null, avatar_url: newAvatarUrl })
+      .eq('id', user.id)
 
     setSaving(false)
     if (error) {
