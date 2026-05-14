@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Stage, Layer, Rect, Line, Circle } from 'react-konva'
 import type Konva from 'konva'
 import type { Stroke, Cut, EvaluationResult } from '../types'
-import { projectToBorder } from '../utils/geometry'
+import { projectToBorder, isValidCut } from '../utils/geometry'
 import { evaluateCanvas } from '../utils/evaluator'
 
 const CANVAS_W = 800
@@ -18,6 +18,7 @@ interface Props {
 export function CutPhase({ strokes, cut, onCutChange, onSubmit }: Props) {
   const drawingLayerRef = useRef<Konva.Layer>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingResult, setPendingResult] = useState<EvaluationResult | null>(null)
 
   function handleDragA(e: Konva.KonvaEventObject<DragEvent>) {
     const pos = projectToBorder(e.target.x(), e.target.y())
@@ -34,6 +35,11 @@ export function CutPhase({ strokes, cut, onCutChange, onSubmit }: Props) {
   }
 
   function handleSubmit() {
+    if (!isValidCut(cut.endpointA, cut.endpointB)) {
+      setError('Both endpoints must be on different edges.')
+      return
+    }
+
     const layer = drawingLayerRef.current
     if (!layer) return
 
@@ -46,6 +52,11 @@ export function CutPhase({ strokes, cut, onCutChange, onSubmit }: Props) {
     }
     if (result.leftCount === 0 || result.rightCount === 0) {
       setError('Cut line must have pixels on both sides.')
+      return
+    }
+
+    if (result.score === 0) {
+      setPendingResult(result)
       return
     }
 
@@ -106,6 +117,26 @@ export function CutPhase({ strokes, cut, onCutChange, onSubmit }: Props) {
           Submit
         </button>
       </div>
+
+      {pendingResult && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <p className="modal-title">Are you trolling?</p>
+            <p className="modal-split">
+              {pendingResult.leftPercentage.toFixed(1)}% /{' '}
+              {pendingResult.rightPercentage.toFixed(1)}%
+            </p>
+            <div className="modal-actions">
+              <button className="btn btn--secondary" onClick={() => setPendingResult(null)}>
+                Go Back
+              </button>
+              <button className="btn btn--primary" onClick={() => onSubmit(pendingResult)}>
+                Submit Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
