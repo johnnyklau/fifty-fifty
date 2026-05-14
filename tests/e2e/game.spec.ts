@@ -56,14 +56,13 @@ test.describe('fifty-fifty game', () => {
     await drawStroke(page, { x: 100, y: 300 }, { x: 700, y: 300 })
     await page.getByRole('button', { name: 'Done Drawing' }).click()
 
-    // Drag endpoint A from near (0,0) to (400,0), creating a diagonal cut.
-    // With A=(400,0) and B=(0,600): pixels at x < 200 → left, x > 200 → right.
-    // Our stroke covers x=100–700 so both sides have pixels.
-    // Start 4px inside the circle (radius 8) to ensure we hit the drag target.
+    // Drag endpoint B from bottom-left (0,600) to bottom-right, creating the main
+    // diagonal A=(0,0)→B≈(792,600). The cut crosses y=300 at x≈396, so the
+    // horizontal stroke (x=100–700) splits roughly 50/50 → score > 0, no popup.
     const box = await getCanvasBox(page)
-    await page.mouse.move(box.x + 4, box.y + 4)
+    await page.mouse.move(box.x + 4, box.y + box.height - 4) // near (0,600)
     await page.mouse.down()
-    await page.mouse.move(box.x + 404, box.y + 4, { steps: 20 })
+    await page.mouse.move(box.x + box.width - 4, box.y + box.height - 4, { steps: 20 })
     await page.mouse.up()
 
     await page.getByRole('button', { name: 'Submit' }).click()
