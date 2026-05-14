@@ -1,4 +1,5 @@
-import { useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useState, useImperativeHandle } from 'react'
+import type React from 'react'
 import { Stage, Layer, Rect, Line } from 'react-konva'
 import type Konva from 'konva'
 import type { Stroke } from '../types'
@@ -11,7 +12,7 @@ export interface AvatarCanvasHandle {
   toDataURL: () => string
 }
 
-export const AvatarCanvas = forwardRef<AvatarCanvasHandle, Record<string, never>>(function AvatarCanvas(_props, ref) {
+export function AvatarCanvas({ ref }: { ref?: React.Ref<AvatarCanvasHandle> }) {
   const stageRef = useRef<Konva.Stage>(null)
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
@@ -117,4 +118,4 @@ export const AvatarCanvas = forwardRef<AvatarCanvasHandle, Record<string, never>
       </div>
     </div>
   )
-})
+}
