@@ -23,7 +23,7 @@ interface Drawing {
   strokes: Stroke[]
 }
 
-type Phase = 'loading' | 'no-prompt' | 'already-done' | 'drawing' | 'cutting' | 'rating' | 'done'
+type Phase = 'loading' | 'no-prompt' | 'already-done' | 'drawing' | 'cutting' | 'rating' | 'done' | 'error'
 
 function msUntilMidnightUTC() {
   const now = new Date()
@@ -114,14 +114,14 @@ export function DailyPage() {
       // Lock out if the user has already submitted a drawing for today's prompt.
       // The game links to the *cut* drawing (possibly from another prompt), so
       // checking the user's own drawing submission is the reliable signal.
-      const { data: myDrawing } = await supabase
+      const { data: myDrawings } = await supabase
         .from('drawings')
         .select('id')
         .eq('user_id', user!.id)
         .eq('prompt_id', promptData.id)
-        .maybeSingle()
+        .limit(1)
 
-      if (myDrawing) {
+      if (myDrawings && myDrawings.length > 0) {
         const { data: todayGame } = await supabase
           .from('games')
           .select('score')
@@ -146,10 +146,16 @@ export function DailyPage() {
     if (!user || !prompt) return
     setStrokes(finalStrokes)
 
-    // Save drawing to pool immediately
-    await supabase
+    // Save drawing to pool — this is also the completion lock
+    const { error: insertErr } = await supabase
       .from('drawings')
       .insert({ user_id: user.id, prompt_id: prompt.id, strokes: finalStrokes })
+
+    if (insertErr) {
+      console.error('Drawing insert failed:', insertErr)
+      setPhase('error' as Phase)
+      return
+    }
 
     // Fetch a drawing to cut (after saving own, so we can exclude it)
     const pool = await fetchPoolDrawing(prompt.id, user.id)
@@ -205,6 +211,14 @@ export function DailyPage() {
     return (
       <div className="daily-gate">
         <p>No challenge today. Check back tomorrow.</p>
+      </div>
+    )
+  }
+
+  if (phase === 'error') {
+    return (
+      <div className="daily-gate">
+        <p className="error-msg">Something went wrong saving your drawing. Check the browser console for details.</p>
       </div>
     )
   }
