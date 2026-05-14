@@ -181,6 +181,11 @@ export function ProfilePage() {
     setDrawingAvatar(false)
   }
 
+  async function handleDeleteDrawing(id: string) {
+    await supabase.from('drawings').delete().eq('id', id)
+    setSubmittedDrawings(prev => prev.filter(d => d.id !== id))
+  }
+
   if (!user) return null
 
   const displayName = username || user.email
@@ -229,7 +234,16 @@ export function ProfilePage() {
                 <div className="drawings-grid">
                   {submittedDrawings.map(d => (
                     <div key={d.id} className="drawing-card">
-                      <DrawingThumbnail strokes={d.strokes} />
+                      <div className="drawing-card-thumb">
+                        <DrawingThumbnail strokes={d.strokes} />
+                        <button
+                          className="drawing-card-delete"
+                          onClick={() => handleDeleteDrawing(d.id)}
+                          aria-label="Delete drawing"
+                        >
+                          ×
+                        </button>
+                      </div>
                       <div className="drawing-card-meta">
                         <span className="drawing-card-prompt">{d.prompt}</span>
                         <span className="drawing-card-date">

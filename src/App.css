@@ -522,11 +522,40 @@
   overflow: hidden;
 }
 
+.drawing-card-thumb {
+  position: relative;
+}
+
 .drawing-thumbnail {
   display: block;
   width: 100%;
   height: auto;
   border-bottom: 1px solid var(--border);
+}
+
+.drawing-card-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0;
+}
+
+.drawing-card:hover .drawing-card-delete {
+  opacity: 1;
 }
 
 .drawing-card-meta {
