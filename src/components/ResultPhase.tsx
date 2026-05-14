@@ -9,9 +9,10 @@ interface Props {
   cut: Cut
   result: EvaluationResult
   onPlayAgain: () => void
+  hidePlayAgain?: boolean
 }
 
-export function ResultPhase({ strokes, cut, result, onPlayAgain }: Props) {
+export function ResultPhase({ strokes, cut, result, onPlayAgain, hidePlayAgain }: Props) {
   const { endpointA: a, endpointB: b } = cut
   const left = result.leftPercentage.toFixed(1)
   const right = result.rightPercentage.toFixed(1)
@@ -56,9 +57,11 @@ export function ResultPhase({ strokes, cut, result, onPlayAgain }: Props) {
             Score: <strong>{score}</strong> / 100
           </p>
         </div>
-        <button className="btn btn--primary" onClick={onPlayAgain}>
-          Play Again
-        </button>
+        {!hidePlayAgain && (
+          <button className="btn btn--primary" onClick={onPlayAgain}>
+            Play Again
+          </button>
+        )}
       </div>
     </>
   )

@@ -507,3 +507,141 @@
   align-items: flex-start;
   gap: 12px;
 }
+
+/* ── Submitted drawings ── */
+
+.drawings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.drawing-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.drawing-thumbnail {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawing-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.drawing-card-prompt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.drawing-card-date {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.drawing-card-stars {
+  font-size: 12px;
+  color: #f6ad55;
+  letter-spacing: 1px;
+}
+
+/* ── Daily challenge ── */
+
+.daily-prompt {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+  text-align: center;
+}
+
+.daily-gate {
+  min-height: calc(100svh - 52px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.daily-complete-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.daily-complete-score {
+  font-size: 18px;
+  color: var(--text);
+  margin: 0;
+}
+
+.daily-complete-score strong {
+  color: var(--accent);
+  font-size: 22px;
+}
+
+.daily-countdown {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.daily-check {
+  color: #38a169;
+  font-weight: 700;
+}
+
+.nav-link--done {
+  color: #38a169;
+}
+
+/* ── Rating UI ── */
+
+.rating-ui {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.rating-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 36px;
+  cursor: pointer;
+  color: var(--border);
+  padding: 0 2px;
+  transition: color 0.1s, transform 0.1s;
+  line-height: 1;
+}
+
+.star-btn:hover,
+.star-btn--active {
+  color: #f6ad55;
+  transform: scale(1.15);
+}
