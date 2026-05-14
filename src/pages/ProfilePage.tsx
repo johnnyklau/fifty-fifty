@@ -102,7 +102,7 @@ export function ProfilePage() {
             id: d.id as string,
             submitted_at: d.submitted_at as string,
             strokes: d.strokes as Stroke[],
-            prompt: (d.prompts as { text: string } | null)?.text ?? '',
+            prompt: (d.prompts as unknown as { text: string } | null)?.text ?? '',
             avgStars: stars.length > 0 ? stars.reduce((a, b) => a + b, 0) / stars.length : null,
           }
         }))
