@@ -3,10 +3,20 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { AvatarCanvas } from '../components/AvatarCanvas'
 import type { AvatarCanvasHandle } from '../components/AvatarCanvas'
+import { DrawingThumbnail } from '../components/DrawingThumbnail'
+import type { Stroke } from '../types'
 
 interface GameRow {
   score: number
   played_at: string
+}
+
+interface SubmittedDrawing {
+  id: string
+  submitted_at: string
+  strokes: Stroke[]
+  prompt: string
+  avgStars: number | null
 }
 
 interface Stats {
@@ -16,11 +26,12 @@ interface Stats {
   perfectCuts: number
   currentStreak: number
   consistency: number
+  avgDrawingRank: number | null
 }
 
-function computeStats(games: GameRow[]): Stats {
+function computeStats(games: GameRow[], avgDrawingRank: number | null = null): Stats {
   if (games.length === 0) {
-    return { gamesPlayed: 0, averageScore: 0, bestScore: 0, perfectCuts: 0, currentStreak: 0, consistency: 0 }
+    return { gamesPlayed: 0, averageScore: 0, bestScore: 0, perfectCuts: 0, currentStreak: 0, consistency: 0, avgDrawingRank }
   }
 
   const scores = games.map(g => g.score)
@@ -49,7 +60,7 @@ function computeStats(games: GameRow[]): Stats {
     }
   }
 
-  return { gamesPlayed, averageScore, bestScore, perfectCuts, currentStreak: streak, consistency }
+  return { gamesPlayed, averageScore, bestScore, perfectCuts, currentStreak: streak, consistency, avgDrawingRank }
 }
 
 export function ProfilePage() {
@@ -58,6 +69,7 @@ export function ProfilePage() {
 
   const [username, setUsername] = useState('')
   const [stats, setStats] = useState<Stats | null>(null)
+  const [submittedDrawings, setSubmittedDrawings] = useState<SubmittedDrawing[]>([])
   const [editing, setEditing] = useState(false)
   const [drawingAvatar, setDrawingAvatar] = useState(false)
   const [editUsername, setEditUsername] = useState('')
@@ -77,11 +89,39 @@ export function ProfilePage() {
       })
 
     supabase
+      .from('drawings')
+      .select('id, submitted_at, strokes, prompts(text), ratings(stars)')
+      .eq('user_id', user.id)
+      .not('prompt_id', 'is', null)
+      .order('submitted_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return
+        setSubmittedDrawings(data.map(d => {
+          const stars = (d.ratings as { stars: number }[]).map(r => r.stars)
+          return {
+            id: d.id as string,
+            submitted_at: d.submitted_at as string,
+            strokes: d.strokes as Stroke[],
+            prompt: (d.prompts as unknown as { text: string } | null)?.text ?? '',
+            avgStars: stars.length > 0 ? stars.reduce((a, b) => a + b, 0) / stars.length : null,
+          }
+        }))
+      })
+
+    supabase
       .from('games')
       .select('score, played_at')
       .eq('user_id', user.id)
-      .then(({ data }) => {
-        if (data) setStats(computeStats(data as GameRow[]))
+      .then(async ({ data: games }) => {
+        if (!games) return
+        const { data: ratings } = await supabase
+          .from('ratings')
+          .select('stars, drawings!inner(user_id)')
+          .eq('drawings.user_id', user!.id)
+        const avgRank = ratings && ratings.length > 0
+          ? ratings.reduce((sum, r) => sum + (r as { stars: number }).stars, 0) / ratings.length
+          : null
+        setStats(computeStats(games as GameRow[], avgRank))
       })
   }, [user])
 
@@ -176,8 +216,35 @@ export function ProfilePage() {
                     <tr><td>Perfect cuts</td><td>{stats.perfectCuts}</td></tr>
                     <tr><td>Current streak</td><td>{stats.currentStreak} {stats.currentStreak === 1 ? 'day' : 'days'}</td></tr>
                     <tr><td>Consistency</td><td>±{stats.consistency.toFixed(1)}</td></tr>
+                {stats.avgDrawingRank !== null && (
+                  <tr><td>Avg drawing rank</td><td>{stats.avgDrawingRank.toFixed(1)} / 5</td></tr>
+                )}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {submittedDrawings.length > 0 && (
+              <div className="profile-drawings">
+                <h2 className="profile-stats-title">Submitted Drawings</h2>
+                <div className="drawings-grid">
+                  {submittedDrawings.map(d => (
+                    <div key={d.id} className="drawing-card">
+                      <DrawingThumbnail strokes={d.strokes} />
+                      <div className="drawing-card-meta">
+                        <span className="drawing-card-prompt">{d.prompt}</span>
+                        <span className="drawing-card-date">
+                          {new Date(d.submitted_at).toLocaleDateString()}
+                        </span>
+                        {d.avgStars !== null && (
+                          <span className="drawing-card-stars">
+                            {'★'.repeat(Math.round(d.avgStars))}{'☆'.repeat(5 - Math.round(d.avgStars))}
+                            {' '}{d.avgStars.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>

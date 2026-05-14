@@ -4,6 +4,7 @@ import { Header } from './components/Header'
 import { GamePage } from './pages/GamePage'
 import { AuthPage } from './pages/AuthPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { DailyPage } from './pages/DailyPage'
 import './App.css'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ function App() {
       <Routes>
         <Route path="/" element={<GamePage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/daily" element={<DailyPage />} />
         <Route
           path="/profile"
           element={
