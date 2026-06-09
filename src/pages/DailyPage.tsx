@@ -23,7 +23,7 @@ interface Drawing {
   strokes: Stroke[]
 }
 
-type Phase = 'loading' | 'no-prompt' | 'already-done' | 'drawing' | 'cutting' | 'rating' | 'done' | 'error'
+type Phase = 'loading' | 'no-prompt' | 'already-done' | 'drawing' | 'saving' | 'cutting' | 'rating' | 'done' | 'error'
 
 function msUntilMidnightUTC() {
   const now = new Date()
@@ -48,18 +48,21 @@ async function fetchPoolDrawing(promptId: string, userId: string): Promise<Drawi
 
   if (promptDrawings && promptDrawings.length > 0) {
     const pick = promptDrawings[Math.floor(Math.random() * promptDrawings.length)]
+    console.log('[daily] pool tier 1 hit:', pick.id)
     return pick as Drawing
   }
 
-  // 2. Any drawing from any other prompt (including seeds with user_id null)
+  // 2. Any drawing from any other prompt, excluding own but keeping seeds (user_id null)
   const { data: anyDrawings } = await supabase
     .from('drawings')
     .select('id, strokes')
     .neq('prompt_id', promptId)
+    .or(`user_id.neq.${userId},user_id.is.null`)
     .limit(50)
 
   if (anyDrawings && anyDrawings.length > 0) {
     const pick = anyDrawings[Math.floor(Math.random() * anyDrawings.length)]
+    console.log('[daily] pool tier 2 hit:', pick.id)
     return pick as Drawing
   }
 
@@ -71,7 +74,9 @@ async function fetchPoolDrawing(promptId: string, userId: string): Promise<Drawi
     .limit(10)
 
   if (seeds && seeds.length > 0) {
-    return seeds[Math.floor(Math.random() * seeds.length)] as Drawing
+    const pick = seeds[Math.floor(Math.random() * seeds.length)]
+    console.log('[daily] pool tier 3 (seed) hit:', pick.id)
+    return pick as Drawing
   }
 
   return null
@@ -145,20 +150,30 @@ export function DailyPage() {
   async function handleDrawDone(finalStrokes: Stroke[]) {
     if (!user || !prompt) return
     setStrokes(finalStrokes)
+    setPhase('saving')
 
     // Save drawing to pool — this is also the completion lock
-    const { error: insertErr } = await supabase
+    const { data: savedDrawing, error: insertErr } = await supabase
       .from('drawings')
       .insert({ user_id: user.id, prompt_id: prompt.id, strokes: finalStrokes })
+      .select('id')
+      .single()
 
     if (insertErr) {
       console.error('Drawing insert failed:', insertErr)
-      setPhase('error' as Phase)
+      setPhase('error')
       return
     }
 
+    console.log('[daily] drawing saved:', savedDrawing?.id)
+
     // Fetch a drawing to cut (after saving own, so we can exclude it)
     const pool = await fetchPoolDrawing(prompt.id, user.id)
+    if (!pool) {
+      console.error('No drawing available to cut')
+      setPhase('error')
+      return
+    }
     setTargetDrawing(pool)
     setCut(DEFAULT_CUT)
     setPhase('cutting')
@@ -203,7 +218,7 @@ export function DailyPage() {
     )
   }
 
-  if (phase === 'loading') {
+  if (phase === 'loading' || phase === 'saving') {
     return <div className="daily-gate"><p>Loading…</p></div>
   }
 
